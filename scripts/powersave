@@ -1,66 +1,98 @@
 #!/bin/sh
 
+#Powersave script optimized for a Lenovo Thinkpad T440p:
+#1) Quad-core i7,
+#2) docking-station-based ethernet (hardcoded device name)
+#3) wireless only enabled when on battery (handled by TLP, not here)
+#4) Some CPU cores disabled on battery power
+#5) USB power management is handled by a separate udev rules script
+
+#This script will disable some of the CPU cores when on battery, and attempts to hard-disable the
+#ethernet chip to save power.
+
 case "$1" in
 	true) # Enable power saving settings on battery
-	  # bus
-	  for i in /sys/bus/*/devices/*/power/control; do echo auto > $i; done
-	  # usb autosuspend
-	  for i in /sys/bus/usb/devices/*/power/autosuspend; do echo 1 > $i; done
-	  for i in /sys/bus/usb/devices/*/power/control; do echo auto > $i; done
-	  # nmi_watchdog -- DISABLED AT KERNEL
-	  #echo 0 > /proc/sys/kernel/nmi_watchdog
-	  # cpu
-	  for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo powersave > $i; done
-	  # aspm
-	  echo powersave > /sys/module/pcie_aspm/parameters/policy
+	  # pci/i2c power management
+	  for i in /sys/bus/pci/devices/*/power/control; do echo auto > $i; done
+
+	  #docking station video is over I2C bus, but might as well enable i2c pm anyway
+	  for i in /sys/bus/i2c/devices/*/device/power/control; do echo auto > $i; done
+
+	  # nmi_watchdog disable on battery
+	  echo 0 > /proc/sys/kernel/nmi_watchdog
+	  # cpu (powersave is the default, leave that alone... but disable half of the cores)
+	  for i in /sys/devices/system/cpu/cpu[4567]/online; do echo 0 > $1; done
+
+	  #aspm
+	  #T440p doesn't allow ASPM, even with pcie_aspm=force kernel param
+	  #echo powersave > /sys/module/pcie_aspm/parameters/policy
+
 	  # kernel write mode
 	  echo 5 > /proc/sys/vm/laptop_mode
 	  echo 90 > /proc/sys/vm/dirty_ratio
 	  echo 1 > /proc/sys/vm/dirty_background_ratio
 	  echo 60000 > /proc/sys/vm/dirty_expire_centisecs
 	  echo 60000 > /proc/sys/vm/dirty_writeback_centisecs
+
 	  # disk powersave
-	  hdparm -S 6 -B 254 -a 2048 /dev/sda &> /dev/null
+	  #hdparm -S 6 -B 254 -a 2048 /dev/sda &> /dev/null
 	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo min_power > $i; done
+
 	  # sound card powersave
 	  echo 1 > /sys/module/snd_hda_intel/parameters/power_save
 	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
-	  # wlan0 powersave
-	  iw dev wlan0 set power_save on &> /dev/null
-	  # screen powersave
-	  for i in /sys/class/backlight/acpi_video*/brightness; do echo 0 > $i; done
-	  xset +dpms
-	  xset dpms 0 0 120
+
+	  # wlan0 powersave (handled by tlp)
+	  #iw dev wlan0 set power_save on &> /dev/null
+
+	  #Disable ethernet and WOL
+	  ethtool -s enp0s25 wol d
+	  /sbin/ip link set dev enp0s25 down
+
+	  # screen powersave (leave alone)
+	  #for i in /sys/class/backlight/acpi_video*/brightness; do echo 0 > $i; done
+	  #xset +dpms
+	  #xset dpms 0 0 120
+
 	  ;;
 	false) # Return to default on AC power
-	  # bus
-	  for i in /sys/bus/*/devices/*/power/control; do echo on > $i; done
-	  # usb autosuspend
-	  for i in /sys/bus/usb/devices/*/power/autosuspend; do echo 600 > $i; done
-	  for i in /sys/bus/usb/devices/*/power/control; do echo auto > $i; done
-	  # nmi_watchdog
-	  # DISABLED AT KERNEL
-	  # cpu
-	  for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo ondemand > $i; done
-	  # aspm
-	  echo default > /sys/module/pcie_aspm/parameters/policy
+	  # pci/i2c power management
+	  for i in /sys/bus/pci/devices/*/power/control; do echo on > $i; done
+
+	  #docking station video is over I2C bus, but might as well enable i2c pm anyway
+	  for i in /sys/bus/i2c/devices/*/device/power/control; do echo on > $i; done
+
+	  # nmi_watchdog re-enable
+	  echo 1 > /proc/sys/kernel/nmi_watchdog
+
+	  # re-enable cores 3/4
+	  for i in /sys/devices/system/cpu/cpu[4567]/online; do echo 1 > $i; done
+
 	  # kernel write mode
 	  echo 0 > /proc/sys/vm/laptop_mode
 	  echo 30 > /proc/sys/vm/dirty_ratio
 	  echo 30 > /proc/sys/vm/dirty_background_ratio
 	  echo 600 > /proc/sys/vm/dirty_expire_centisecs
 	  echo 600 > /proc/sys/vm/dirty_writeback_centisecs
+
 	  # disk powersave
-	  hdparm -S 0 -B 254 -a 2048 /dev/sda &> /dev/null
+	  #hdparm -S 0 -B 254 -a 2048 /dev/sda &> /dev/null
 	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo max_performance > $i; done
+
 	  # sound card powersave
 	  echo 0 > /sys/module/snd_hda_intel/parameters/power_save
 	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
+
 	  # wlan0 powersave
-	  iw dev wlan0 set power_save off &> /dev/null
+	  #iw dev wlan0 set power_save off &> /dev/null
+
+	  #Enable ethernet and WOL
+	  /sbin/ip link set dev enp0s25 up
+	  ethtool -s enp0s25 wol g
+
 	  # screen powersave
-	  for i in /sys/class/backlight/acpi_video*/brightness; do echo 9 > $i; done
-	  xset -dpms
+	  #for i in /sys/class/backlight/acpi_video*/brightness; do echo 9 > $i; done
+	  #xset -dpms
 	  ;;
 esac
 exit 0

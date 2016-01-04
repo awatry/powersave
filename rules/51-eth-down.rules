@@ -1,4 +1,5 @@
-# /etc/udev/rules.d/50-eth-down.rules
-# vim: ft=udevrules
 
-ACTION=="add", SUBSYSTEM=="net", KERNEL=="eth*" RUN+="/sbin/ip link set dev %k down"
+#Disable ethernet
+#Probably should do this as part of the AC/Battery script to toggle the
+#network interface availability based on the AC status
+#ACTION=="add", SUBSYSTEM=="net", KERNEL=="enp0s25" RUN+="/sbin/ip link set dev %k down"
