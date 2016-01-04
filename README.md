@@ -3,7 +3,7 @@ Powersave
 
 This is a powersaving script for Linux. Initially, I've created it for my own laptop. That means that this script will **not** work on every setup so please **check** this before running it on your computer! Things might break otherwise and I will **not** be responsible for any damage that has been done. This script gives me roughly 1:30/2:00 hours of battery life, on a battery that would otherwise last ~45 minutes. (yea, I know, my battery is fried)
 
-This script has been modified to work in tandem with TLP, which handles additional power management toggles between battery/AC.
+This script has been modified to work in tandem with [TLP](http://linrunner.de/en/tlp/docs/tlp-linux-advanced-power-management.html), which handles additional power management toggles between battery/AC.
 
 Installation
 ------------
