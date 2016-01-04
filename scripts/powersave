@@ -40,6 +40,7 @@ case "$1" in
 	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo min_power > $i; done
 
 	  # sound card powersave
+	  #Might be handled by TLP
 	  echo 1 > /sys/module/snd_hda_intel/parameters/power_save
 	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
 
@@ -49,6 +50,7 @@ case "$1" in
 	  #Disable ethernet and WOL
 	  ethtool -s enp0s25 wol d
 	  /sbin/ip link set dev enp0s25 down
+	  #Can also try ifconfig enp0s25 down
 
 	  # screen powersave (leave alone)
 	  #for i in /sys/class/backlight/acpi_video*/brightness; do echo 0 > $i; done
@@ -78,6 +80,7 @@ case "$1" in
 	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo max_performance > $i; done
 
 	  # sound card powersave
+	  #Might be handled by TLP
 	  echo 0 > /sys/module/snd_hda_intel/parameters/power_save
 	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
 
@@ -86,6 +89,7 @@ case "$1" in
 
 	  #Enable ethernet and WOL
 	  /sbin/ip link set dev enp0s25 up
+	  #Can also try ifconfig enp0s25 up
 	  ethtool -s enp0s25 wol g
 
 	  # screen powersave
