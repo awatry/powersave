@@ -7,21 +7,22 @@
 #4) Some CPU cores disabled on battery power
 #5) USB power management is handled by a separate udev rules script
 
+#PCI/I2C is all done through udev rules.
+#T440p is apparently well-behaved with auto for all built-in PCI/I2C devices
+
 #This script will disable some of the CPU cores when on battery, and attempts to hard-disable the
 #ethernet chip to save power.
 
 case "$1" in
 	true) # Enable power saving settings on battery
-	  # pci/i2c power management
-	  for i in /sys/bus/pci/devices/*/power/control; do echo auto > $i; done
-
-	  #docking station video is over I2C bus, but might as well enable i2c pm anyway
-	  for i in /sys/bus/i2c/devices/*/device/power/control; do echo auto > $i; done
-
 	  # nmi_watchdog disable on battery
 	  echo 0 > /proc/sys/kernel/nmi_watchdog
+
 	  # cpu (powersave is the default, leave that alone... but disable half of the cores)
-	  for i in /sys/devices/system/cpu/cpu[4567]/online; do echo 0 > $1; done
+	  echo 0 > /sys/devices/system/cpu/cpu4/online
+	  echo 0 > /sys/devices/system/cpu/cpu5/online
+	  echo 0 > /sys/devices/system/cpu/cpu6/online
+	  echo 0 > /sys/devices/system/cpu/cpu7/online
 
 	  #aspm
 	  #T440p doesn't allow ASPM, even with pcie_aspm=force kernel param
@@ -56,17 +57,14 @@ case "$1" in
 
 	  ;;
 	false) # Return to default on AC power
-	  # pci/i2c power management
-	  for i in /sys/bus/pci/devices/*/power/control; do echo on > $i; done
-
-	  #docking station video is over I2C bus, but might as well enable i2c pm anyway
-	  for i in /sys/bus/i2c/devices/*/device/power/control; do echo on > $i; done
-
 	  # nmi_watchdog re-enable
 	  echo 1 > /proc/sys/kernel/nmi_watchdog
 
 	  # re-enable cores 3/4
-	  for i in /sys/devices/system/cpu/cpu[4567]/online; do echo 1 > $i; done
+	  echo 1 > /sys/devices/system/cpu/cpu4/online
+	  echo 1 > /sys/devices/system/cpu/cpu5/online
+	  echo 1 > /sys/devices/system/cpu/cpu6/online
+	  echo 1 > /sys/devices/system/cpu/cpu7/online
 
 	  # kernel write mode
 	  echo 0 > /proc/sys/vm/laptop_mode
