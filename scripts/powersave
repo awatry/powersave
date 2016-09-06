@@ -18,7 +18,10 @@ case "$1" in
 	  # nmi_watchdog disable on battery
 	  echo 0 > /proc/sys/kernel/nmi_watchdog
 
-	  # cpu (powersave is the default, leave that alone... but disable half of the cores)
+	  # cpu (powersave is the default, leave that alone...
+	  #      but disable most of the cores)
+	  echo 0 > /sys/devices/system/cpu/cpu2/online
+	  echo 0 > /sys/devices/system/cpu/cpu3/online
 	  echo 0 > /sys/devices/system/cpu/cpu4/online
 	  echo 0 > /sys/devices/system/cpu/cpu5/online
 	  echo 0 > /sys/devices/system/cpu/cpu6/online
@@ -41,24 +44,33 @@ case "$1" in
 	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
 
 	  # wlan0 powersave (handled by tlp)
-	  #iw dev wlan0 set power_save on &> /dev/null
+	  #iw dev wlp3s0 set power_save on &> /dev/null
 
 	  #Disable ethernet and WOL
 	  ethtool -s enp0s25 wol d
 	  /sbin/ip link set dev enp0s25 down
+	  /sbin/ifconfig enp0s25 down
+	  /sbin/ifconfig virbr0 down
 	  #Can also try ifconfig enp0s25 down
+	  #WiFi issues after undock may be due to bug in network manager. restarting seems to help:
+	  service network-manager restart
 
 	  # screen powersave (leave alone)
 	  #for i in /sys/class/backlight/acpi_video*/brightness; do echo 0 > $i; done
 	  #xset +dpms
 	  #xset dpms 0 0 120
 
+	  #Auto-configure displays based on previously preferred settings
+	  DISPLAY=:1 /usr/bin/xrandr --auto
+
 	  ;;
 	false) # Return to default on AC power
 	  # nmi_watchdog re-enable
 	  echo 1 > /proc/sys/kernel/nmi_watchdog
 
-	  # re-enable cores 3/4
+	  # re-enable cores 2/3/4
+	  echo 1 > /sys/devices/system/cpu/cpu2/online
+	  echo 1 > /sys/devices/system/cpu/cpu3/online
 	  echo 1 > /sys/devices/system/cpu/cpu4/online
 	  echo 1 > /sys/devices/system/cpu/cpu5/online
 	  echo 1 > /sys/devices/system/cpu/cpu6/online
@@ -81,9 +93,11 @@ case "$1" in
 	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
 
 	  # wlan0 powersave
-	  #iw dev wlan0 set power_save off &> /dev/null
+	  #iw dev wlp3s0 set power_save off &> /dev/null
 
 	  #Enable ethernet and WOL
+	  /sbin/ifconfig virbr0 up
+	  /sbin/ifconfig enp0s25 up
 	  /sbin/ip link set dev enp0s25 up
 	  #Can also try ifconfig enp0s25 up
 	  ethtool -s enp0s25 wol g
@@ -91,6 +105,9 @@ case "$1" in
 	  # screen powersave
 	  #for i in /sys/class/backlight/acpi_video*/brightness; do echo 9 > $i; done
 	  #xset -dpms
+
+	  #Auto-configure displays based on previously preferred settings
+	  DISPLAY=:1 /usr/bin/xrandr --auto
 	  ;;
 esac
 exit 0
