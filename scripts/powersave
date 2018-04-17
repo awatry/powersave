@@ -1,6 +1,8 @@
 #!/bin/sh
 
 #Powersave script optimized for a Lenovo Thinkpad T440p:
+#0) Most of this script assumes that you've already installed/configured TLP as a powersaving measure.
+#     If TLP can manage a setting for you, just let it.
 #1) Quad-core i7,
 #2) docking-station-based ethernet (hardcoded device name)
 #3) wireless only enabled when on battery (handled by TLP, not here)
@@ -12,16 +14,12 @@
 
 #This script will disable some of the CPU cores when on battery, and attempts to hard-disable the
 #ethernet chip to save power.
-
 case "$1" in
 	true) # Enable power saving settings on battery
-	  # nmi_watchdog disable on battery
-	  echo 0 > /proc/sys/kernel/nmi_watchdog
-
 	  # cpu (powersave is the default, leave that alone...
 	  #      but disable most of the cores)
-	  echo 0 > /sys/devices/system/cpu/cpu2/online
-	  echo 0 > /sys/devices/system/cpu/cpu3/online
+	  #echo 0 > /sys/devices/system/cpu/cpu2/online
+	  #echo 0 > /sys/devices/system/cpu/cpu3/online
 	  echo 0 > /sys/devices/system/cpu/cpu4/online
 	  echo 0 > /sys/devices/system/cpu/cpu5/online
 	  echo 0 > /sys/devices/system/cpu/cpu6/online
@@ -34,26 +32,8 @@ case "$1" in
 	  echo 60000 > /proc/sys/vm/dirty_expire_centisecs
 	  echo 60000 > /proc/sys/vm/dirty_writeback_centisecs
 
-	  # disk powersave (handled by TLP)
-	  #hdparm -S 6 -B 254 -a 2048 /dev/sda &> /dev/null
-#	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo min_power > $i; done
-
-	  # sound card powersave
-	  #Might be handled by TLP
-	  echo 1 > /sys/module/snd_hda_intel/parameters/power_save
-	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
-
-	  # wlan0 powersave (handled by tlp)
-	  #iw dev wlp3s0 set power_save on &> /dev/null
-
-	  #Disable ethernet and WOL
-	  ethtool -s enp0s25 wol d
-	  /sbin/ip link set dev enp0s25 down
+	  #Disable ethernet on battery
 	  /sbin/ifconfig enp0s25 down
-	  /sbin/ifconfig virbr0 down
-	  #Can also try ifconfig enp0s25 down
-	  #WiFi issues after undock may be due to bug in network manager. restarting seems to help:
-	  service network-manager restart
 
 	  # screen powersave (leave alone)
 	  #for i in /sys/class/backlight/acpi_video*/brightness; do echo 0 > $i; done
@@ -61,16 +41,13 @@ case "$1" in
 	  #xset dpms 0 0 120
 
 	  #Auto-configure displays based on previously preferred settings
-	  DISPLAY=:1 /usr/bin/xrandr --auto
+	  #DISPLAY=:0 /usr/bin/xrandr --auto
 
 	  ;;
 	false) # Return to default on AC power
-	  # nmi_watchdog re-enable
-	  echo 1 > /proc/sys/kernel/nmi_watchdog
-
 	  # re-enable cores 2/3/4
-	  echo 1 > /sys/devices/system/cpu/cpu2/online
-	  echo 1 > /sys/devices/system/cpu/cpu3/online
+	  #echo 1 > /sys/devices/system/cpu/cpu2/online
+	  #echo 1 > /sys/devices/system/cpu/cpu3/online
 	  echo 1 > /sys/devices/system/cpu/cpu4/online
 	  echo 1 > /sys/devices/system/cpu/cpu5/online
 	  echo 1 > /sys/devices/system/cpu/cpu6/online
@@ -83,31 +60,17 @@ case "$1" in
 	  echo 600 > /proc/sys/vm/dirty_expire_centisecs
 	  echo 600 > /proc/sys/vm/dirty_writeback_centisecs
 
-	  # disk powersave
-	  #hdparm -S 0 -B 254 -a 2048 /dev/sda &> /dev/null
-#	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo max_performance > $i; done
-
-	  # sound card powersave
-	  #Might be handled by TLP
-	  echo 0 > /sys/module/snd_hda_intel/parameters/power_save
-	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
-
-	  # wlan0 powersave
-	  #iw dev wlp3s0 set power_save off &> /dev/null
+	  systemctl restart NetworkManager
 
 	  #Enable ethernet and WOL
-	  /sbin/ifconfig virbr0 up
 	  /sbin/ifconfig enp0s25 up
-	  /sbin/ip link set dev enp0s25 up
-	  #Can also try ifconfig enp0s25 up
-	  ethtool -s enp0s25 wol g
 
 	  # screen powersave
 	  #for i in /sys/class/backlight/acpi_video*/brightness; do echo 9 > $i; done
 	  #xset -dpms
 
 	  #Auto-configure displays based on previously preferred settings
-	  DISPLAY=:1 /usr/bin/xrandr --auto
+	  #DISPLAY=:0 /usr/bin/xrandr --auto
 	  ;;
 esac
 exit 0
